@@ -2,6 +2,8 @@
 #include "cuda_runtime.h"
 #include "device_launch_parameters.h"
 #include "RadialSymmetryImage.h"
+#include <Windows.h>
+#include <ctime>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -16,10 +18,32 @@ __global__ void addKernel(int *c, const int *a, const int *b)
 
 int main()
 {
-	uint8_t * image=(uint8_t *)calloc(512*512,sizeof(uint8_t));
+	uint8_t * image=(uint8_t *)calloc(160*160,sizeof(uint8_t)); //File
 	
-	RadialSymmetryImage RC(image,512,512);
+	RadialSymmetryImage RC(image,160,160);
+
+    LARGE_INTEGER frequency;
+    LARGE_INTEGER start;
+    LARGE_INTEGER end;
+
+	double elapsedSeconds;
+    QueryPerformanceFrequency(&frequency);
+    
+
+	clock_t begin_time = clock();
+	QueryPerformanceCounter(&start);
+
+	for(size_t i=0;i<10000;i++)
+	{
+		RC.UpdateCenter();
+	}
+	QueryPerformanceCounter(&end);
+	printf("%lf or %f, %f clokcs for CalcDervs\n",(end.QuadPart - start.QuadPart)/(double)10000 / (double)frequency.QuadPart,float( clock () - begin_time ) /  CLOCKS_PER_SEC,float( clock () - begin_time ) );
+	
 	free(image);
+
+
+
     const int arraySize = 5;
     const int a[arraySize] = { 1, 2, 3, 4, 5 };
     const int b[arraySize] = { 10, 20, 30, 40, 50 };

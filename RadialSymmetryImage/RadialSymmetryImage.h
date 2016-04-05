@@ -29,7 +29,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef __RADIALSYMMETRYIMAGE_H__
 #define __RADIALSYMMETRYIMAGE_H__
 
+#define _AMD64_
+
 #include <stdint.h>
+#include <WinDef.h>
 
 class RadialSymmetryImage
 {
@@ -38,8 +41,9 @@ public:
 	// Take an image
 	RadialSymmetryImage(uint8_t * image, size_t width, size_t height);
 
-	// Calculate the center. You will call it when new image acquired
+	// Update the center. You will call it when new image acquired
 	void UpdateCenter();
+
 	// Get center poisition
 	void GetCenter(float * pX_c, float * pY_c);
 	
@@ -53,6 +57,9 @@ protected:
 	size_t m_height;
 	float m_x_c;	//X center
 	float m_y_c;	//Y center
+	float m_x_centroid;	//X center
+	float m_y_centroid;	//Y center
+
 
 	//midpoint grid coordinates
 	float * m_gridX;
@@ -69,16 +76,38 @@ protected:
 	//Gradient magnitude and slope
 	float * m_gradMag;
 	float * m_gradSlope;
+	float * m_gradIntercept; //y=@m_gradSlope * x + @m_gradIntercept is for a gradient vector
+	float m_gradMass;//Sum of m_gradMag
+
 	float m_gradDenominator;
 	float m_gradNumerator;
 	float m_gradMax;
 	float minimumFloat;
 
-	void InitVars();
-	void UpdateDervs();
-	void UpdateGradField();
+	//Variables for center fitting
+	float wm2p1;
+    float sw;
+	float smmw;
+	float smw;
+    float smbw;
+	float sbw;
+	float det;
+	float m; //slope
+	float b; //intercept
+	float w; //weight
 
+	//Allocate memory
+	void InitVars();
+	//Update derivative images
+	void CalcDervs();
+	//Update gradient field
+	void CalcGradField();
+	//Update center poisition
+	void CalcCenter();
+
+	//1D coord for @m_width X @m_height dimension image
 	size_t Coord(size_t y, size_t x);
+	//1D coord for @m_width-1 X @m_height-1 dimension image, i.e., derivative images.
 	size_t DCoord(size_t y, size_t x);
 };
 
