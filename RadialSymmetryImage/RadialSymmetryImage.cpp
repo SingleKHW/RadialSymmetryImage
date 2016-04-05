@@ -2,9 +2,9 @@
 
 Project		:	RadialSymmetryImage
 Description	:	RadialSymmetryImage class to calculate the center of 
-				a 2D image which has radial symmetry.
-				This is a C++ porting. To see the original work,
-				check <doi:10.1038/nmeth.2071>.
+a 2D image which has radial symmetry.
+This is a C++ porting. To see the original work,
+check <doi:10.1038/nmeth.2071>.
 
 *
 
@@ -82,7 +82,7 @@ void RadialSymmetryImage::InitVars()
 
 	m_gradNumerator=1;
 	m_gradNumerator=1;
-	
+
 	minimumFloat=0.0001f;
 	m_gradMax=(float)m_height/minimumFloat;
 
@@ -114,11 +114,11 @@ void RadialSymmetryImage::CalcDervs()
 		for(size_t x=1;x<m_width-2;x++)
 		{
 			m_duFiltered[DCoord(y,x)]=(	m_du[DCoord(y-1,x-1)]+	m_du[DCoord(y-1,x)]+	m_du[DCoord(y-1,x+1)]+ \
-										m_du[DCoord(y,x-1)]+	m_du[DCoord(y,x)]+		m_du[DCoord(y,x+1)]+ \
-										m_du[DCoord(y+1,x-1)]+	m_du[DCoord(y+1,x)]+	m_du[DCoord(y+1,x+1)])/9;
+				m_du[DCoord(y,x-1)]+	m_du[DCoord(y,x)]+		m_du[DCoord(y,x+1)]+ \
+				m_du[DCoord(y+1,x-1)]+	m_du[DCoord(y+1,x)]+	m_du[DCoord(y+1,x+1)])/9;
 			m_dvFiltered[DCoord(y,x)]=(	m_dv[DCoord(y-1,x-1)]+	m_dv[DCoord(y-1,x)]+	m_dv[DCoord(y-1,x+1)]+ \
-										m_dv[DCoord(y,x-1)]+	m_dv[DCoord(y,x)]+		m_dv[DCoord(y,x+1)]+ \
-										m_dv[DCoord(y+1,x-1)]+	m_dv[DCoord(y+1,x)]+	m_dv[DCoord(y+1,x+1)])/9;
+				m_dv[DCoord(y,x-1)]+	m_dv[DCoord(y,x)]+		m_dv[DCoord(y,x+1)]+ \
+				m_dv[DCoord(y+1,x-1)]+	m_dv[DCoord(y+1,x)]+	m_dv[DCoord(y+1,x+1)])/9;
 		}
 	}
 
@@ -131,26 +131,26 @@ void RadialSymmetryImage::CalcDervs()
 									m_dv[DCoord(0+1,x-1)]+	m_dv[DCoord(0+1,x)]+	m_dv[DCoord(0+1,x+1)])/6;
 
 		m_duFiltered[DCoord(m_height-2,x)]=(	m_du[DCoord(m_height-2-1,x-1)]+	m_du[DCoord(m_height-2-1,x)]+	m_du[DCoord(m_height-2-1,x+1)]+	\
-									m_du[DCoord(m_height-2,x-1)]+	m_du[DCoord(m_height-2,x)]+		m_du[DCoord(m_height-2,x+1)])/6;
+			m_du[DCoord(m_height-2,x-1)]+	m_du[DCoord(m_height-2,x)]+		m_du[DCoord(m_height-2,x+1)])/6;
 		m_dvFiltered[DCoord(m_height-2,x)]=(	m_dv[DCoord(m_height-2-1,x-1)]+	m_dv[DCoord(m_height-2-1,x)]+	m_dv[DCoord(m_height-2-1,x+1)]+	\
-									m_dv[DCoord(m_height-2,x-1)]+	m_dv[DCoord(m_height-2,x)]+		m_dv[DCoord(m_height-2,x+1)])/6;
+			m_dv[DCoord(m_height-2,x-1)]+	m_dv[DCoord(m_height-2,x)]+		m_dv[DCoord(m_height-2,x+1)])/6;
 	}
 
 	for(size_t y=1;y<m_height-2;y++)
 	{
 		m_duFiltered[DCoord(y,0)]=(	m_du[DCoord(y-1,0)]+	m_du[DCoord(y-1,0+1)]+ \
-									m_du[DCoord(y,0)]+		m_du[DCoord(y,0+1)]+ \
-									m_du[DCoord(y+1,0)]+	m_du[DCoord(y+1,0+1)])/6;
+			m_du[DCoord(y,0)]+		m_du[DCoord(y,0+1)]+ \
+			m_du[DCoord(y+1,0)]+	m_du[DCoord(y+1,0+1)])/6;
 		m_dvFiltered[DCoord(y,0)]=(	m_dv[DCoord(y-1,0)]+	m_dv[DCoord(y-1,0+1)]+ \
-									m_dv[DCoord(y,0)]+		m_dv[DCoord(y,0+1)]+ \
-									m_dv[DCoord(y+1,0)]+	m_dv[DCoord(y+1,0+1)])/6;
-		
+			m_dv[DCoord(y,0)]+		m_dv[DCoord(y,0+1)]+ \
+			m_dv[DCoord(y+1,0)]+	m_dv[DCoord(y+1,0+1)])/6;
+
 		m_duFiltered[DCoord(y,m_width-2)]=(	m_du[DCoord(y-1,m_width-2-1)]+	m_du[DCoord(y-1,m_width-2)]+	\
-									m_du[DCoord(y,m_width-2-1)]+	m_du[DCoord(y,m_width-2)]+		\
-									m_du[DCoord(y+1,m_width-2-1)]+	m_du[DCoord(y+1,m_width-2)])/6;
+			m_du[DCoord(y,m_width-2-1)]+	m_du[DCoord(y,m_width-2)]+		\
+			m_du[DCoord(y+1,m_width-2-1)]+	m_du[DCoord(y+1,m_width-2)])/6;
 		m_dvFiltered[DCoord(y,m_width-2)]=(	m_dv[DCoord(y-1,m_width-2-1)]+	m_dv[DCoord(y-1,m_width-2)]+	\
-									m_dv[DCoord(y,m_width-2-1)]+	m_dv[DCoord(y,m_width-2)]+		\
-									m_dv[DCoord(y+1,m_width-2-1)]+	m_dv[DCoord(y+1,m_width-2)])/6;
+			m_dv[DCoord(y,m_width-2-1)]+	m_dv[DCoord(y,m_width-2)]+		\
+			m_dv[DCoord(y+1,m_width-2-1)]+	m_dv[DCoord(y+1,m_width-2)])/6;
 	}
 
 	//Smoothing corners
@@ -158,7 +158,7 @@ void RadialSymmetryImage::CalcDervs()
 	m_duFiltered[DCoord(0,m_width-2)]			=(m_du[DCoord(0,m_width-2)]+m_du[DCoord(0,m_width-2-1)]+m_du[DCoord(1,m_width-2)]+m_du[DCoord(1,m_width-2-1)])/4;
 	m_duFiltered[DCoord(m_height-2,0)]			=(m_du[DCoord(m_height-2,0)]+m_du[DCoord(m_height-2,1)]+m_du[DCoord(m_height-2-1,0)]+m_du[DCoord(m_height-2-1,1)])/4;
 	m_duFiltered[DCoord(m_height-2,m_width-2)]	=(m_du[DCoord(m_height-2,m_width-2)]+m_du[DCoord(m_height-2,m_width-2-1)]+	\
-												m_du[DCoord(m_height-2-1,m_width-2)]+m_du[DCoord(m_height-2-1,m_width-2-1)])/4;
+		m_du[DCoord(m_height-2-1,m_width-2)]+m_du[DCoord(m_height-2-1,m_width-2-1)])/4;
 }
 
 void RadialSymmetryImage::CalcGradField()
@@ -215,10 +215,10 @@ void RadialSymmetryImage::CalcCenter()
 
 	//Initialize variables
 	wm2p1=0;
-    sw=0;
+	sw=0;
 	smmw=0;
 	smw=0;
-    smbw=0;
+	smbw=0;
 	sbw=0;
 	det=0;
 
@@ -231,7 +231,7 @@ void RadialSymmetryImage::CalcCenter()
 		for(size_t x=0;x<m_width-1;x++)
 		{
 			w=m_gradMag[DCoord(y,x)]/ \
-									sqrt(pow(m_gridX[DCoord(y,x)]-m_x_centroid,2)+pow(m_gridY[DCoord(y,x)]-m_y_centroid,2));
+				sqrt(pow(m_gridX[DCoord(y,x)]-m_x_centroid,2)+pow(m_gridY[DCoord(y,x)]-m_y_centroid,2));
 
 			m=m_gradSlope[DCoord(y,x)];
 			b=m_gradIntercept[DCoord(y,x)];
