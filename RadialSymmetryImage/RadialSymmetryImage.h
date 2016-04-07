@@ -2,9 +2,9 @@
 
 Project		:	RadialSymmetryImage
 Description	:	RadialSymmetryImage class to calculate the center of 
-a 2D image which has radial symmetry.
-This is a C++ porting. To see the original work,
-check <doi:10.1038/nmeth.2071>.
+				a 2D image which has radial symmetry.
+				This is a C++ porting. To see the original work,
+				check <doi:10.1038/nmeth.2071>.
 
 *
 

@@ -2,9 +2,9 @@
 
 Project		:	RadialSymmetryImage
 Description	:	RadialSymmetryImage class to calculate the center of 
-a 2D image which has radial symmetry.
-This is a C++ porting. To see the original work,
-check <doi:10.1038/nmeth.2071>.
+				a 2D image which has radial symmetry.
+				This is a C++ porting. To see the original work,
+				check <doi:10.1038/nmeth.2071>.
 
 *
 
@@ -42,6 +42,7 @@ RadialSymmetryImage::RadialSymmetryImage(uint8_t * image, size_t width, size_t h
 
 	//Initialize dervative images
 	InitVars();
+
 	//Update center
 	UpdateCenter();
 }
@@ -200,6 +201,9 @@ void RadialSymmetryImage::CalcGradField()
 
 void RadialSymmetryImage::CalcCenter()
 {
+	//Initialize centroid
+	m_x_centroid=0;
+	m_y_centroid=0;
 
 	//Find centroid to update @m_weight
 	for(size_t y=0;y<m_height-1;y++)
@@ -265,8 +269,8 @@ void RadialSymmetryImage::UpdateCenter()
 
 void RadialSymmetryImage::GetCenter(float * pX_c, float * pY_c)
 {
-	pX_c=&m_x_c;
-	pY_c=&m_y_c;
+	*pX_c=m_x_c+(m_width+1)/2.0;
+	*pY_c=m_y_c+(m_height+1)/2.0;
 }
 
 size_t RadialSymmetryImage::Coord(size_t y, size_t x)
