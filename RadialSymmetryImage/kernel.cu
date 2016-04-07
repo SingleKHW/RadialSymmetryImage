@@ -7,6 +7,10 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <iostream>
+#include <fstream>
+
+using namespace std;
 
 cudaError_t addWithCuda(int *c, const int *a, const int *b, unsigned int size);
 
@@ -18,54 +22,58 @@ __global__ void addKernel(int *c, const int *a, const int *b)
 
 int main()
 {
+	float *x_c;
+	float *y_c;
+	float a,b;
+	x_c=&a;
+	y_c=&b;
+	char * charImage=(char *)calloc(160*160,sizeof(char)); //File
 	uint8_t * image=(uint8_t *)calloc(160*160,sizeof(uint8_t)); //File
 
+	ifstream imageFile("C:\\Users\\y\\Desktop\\HSMT\\test_bin\\2.p.bin",ios::in|ios::binary|ios::ate);
+
+	size_t size=imageFile.tellg();
+	imageFile.seekg (0, ios::beg);
+
+	printf("file sizeis %d\n",size);
+	imageFile.read(charImage,size);
+
+	for (size_t y=0;y<160;y++)
+		for (size_t x=0;x<160;x++)
+			image[160*y+x]=(uint8_t)charImage[160*y+x];
+
 	RadialSymmetryImage RC(image,160,160);
-
-	LARGE_INTEGER frequency;
-	LARGE_INTEGER start;
-	LARGE_INTEGER end;
-
-	double elapsedSeconds;
-	QueryPerformanceFrequency(&frequency);
-
-
-	clock_t begin_time = clock();
-	QueryPerformanceCounter(&start);
-
-	for(size_t i=0;i<10000;i++)
+	for(int i=0;i<10;i++)
 	{
-		RC.UpdateCenter();
-	}
-	QueryPerformanceCounter(&end);
-	printf("%lf or %f, %f clokcs for CalcDervs\n",(end.QuadPart - start.QuadPart)/(double)10000 / (double)frequency.QuadPart,float( clock () - begin_time ) /  CLOCKS_PER_SEC,float( clock () - begin_time ) );
+		RC.GetCenter(x_c, y_c);
+		printf("%f, %f\n", *x_c, *y_c);
 
+	}
+	imageFile.close();
 	free(image);
+	free(charImage);
+
+	//LARGE_INTEGER frequency;
+	//LARGE_INTEGER start;
+	//LARGE_INTEGER end;
+
+	//double elapsedSeconds;
+	//QueryPerformanceFrequency(&frequency);
+
+
+	//clock_t begin_time = clock();
+	//QueryPerformanceCounter(&start);
+
+	//for(size_t i=0;i<1000;i++)
+	//{
+	//	RC.UpdateCenter();
+	//}
+	//QueryPerformanceCounter(&end);
+
+	//printf("%lf or %f, %f clokcs for UpdateCenter()\n",(end.QuadPart - start.QuadPart)/(double)1000 / (double)frequency.QuadPart,float( clock () - begin_time ) /  CLOCKS_PER_SEC,float( clock () - begin_time ) );
 
 
 
-	const int arraySize = 5;
-	const int a[arraySize] = { 1, 2, 3, 4, 5 };
-	const int b[arraySize] = { 10, 20, 30, 40, 50 };
-	int c[arraySize] = { 0 };
-
-	// Add vectors in parallel.
-	cudaError_t cudaStatus = addWithCuda(c, a, b, arraySize);
-	if (cudaStatus != cudaSuccess) {
-		fprintf(stderr, "addWithCuda failed!");
-		return 1;
-	}
-
-	printf("{1,2,3,4,5} + {10,20,30,40,50} = {%d,%d,%d,%d,%d}\n",
-		c[0], c[1], c[2], c[3], c[4]);
-
-	// cudaDeviceReset must be called before exiting in order for profiling and
-	// tracing tools such as Nsight and Visual Profiler to show complete traces.
-	cudaStatus = cudaDeviceReset();
-	if (cudaStatus != cudaSuccess) {
-		fprintf(stderr, "cudaDeviceReset failed!");
-		return 1;
-	}
 
 	return 0;
 }

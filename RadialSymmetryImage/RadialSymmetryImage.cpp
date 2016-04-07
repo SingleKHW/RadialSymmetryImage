@@ -2,9 +2,9 @@
 
 Project		:	RadialSymmetryImage
 Description	:	RadialSymmetryImage class to calculate the center of 
-a 2D image which has radial symmetry.
-This is a C++ porting. To see the original work,
-check <doi:10.1038/nmeth.2071>.
+				a 2D image which has radial symmetry.
+				This is a C++ porting. To see the original work,
+				check <doi:10.1038/nmeth.2071>.
 
 *
 
@@ -42,8 +42,36 @@ RadialSymmetryImage::RadialSymmetryImage(uint8_t * image, size_t width, size_t h
 
 	//Initialize dervative images
 	InitVars();
-	//Update center
-	UpdateCenter();
+
+	//Calculate derivatives 
+	CalcDervs();
+
+	//Update gradient field image
+	CalcGradField();
+
+	//Centroid calculation as a poor approximation
+
+	//Initialize centroid
+	m_x_centroid=0;
+	m_y_centroid=0;
+
+	//Find centroid to update @m_weight
+	for(size_t y=0;y<m_height-1;y++)
+	{
+		for(size_t x=0;x<m_width-1;x++)
+		{
+			m_x_centroid+=m_gradMag[DCoord(y,x)]*m_gridX[DCoord(y,x)];
+			m_y_centroid+=m_gradMag[DCoord(y,x)]*m_gridY[DCoord(y,x)];
+		}
+	}
+	m_x_centroid/=m_gradMass;
+	m_y_centroid/=m_gradMass;
+
+	m_x_c=m_x_centroid;
+	m_y_c=m_y_centroid;
+
+	//Calculate a center position
+	CalcCenter();
 }
 
 
@@ -200,18 +228,11 @@ void RadialSymmetryImage::CalcGradField()
 
 void RadialSymmetryImage::CalcCenter()
 {
+	//The previous center positions are @m_x_centroid, @m_y_centroid
+	//It assume that the bead does not move too much
 
-	//Find centroid to update @m_weight
-	for(size_t y=0;y<m_height-1;y++)
-	{
-		for(size_t x=0;x<m_width-1;x++)
-		{
-			m_x_centroid+=m_gradMag[DCoord(y,x)]*m_gridX[DCoord(y,x)];
-			m_y_centroid+=m_gradMag[DCoord(y,x)]*m_gridY[DCoord(y,x)];
-		}
-	}
-	m_x_centroid/=m_gradMass;
-	m_y_centroid/=m_gradMass;
+	m_x_centroid=m_x_c;
+	m_y_centroid=m_y_c;
 
 	//Initialize variables
 	wm2p1=0;
@@ -265,8 +286,8 @@ void RadialSymmetryImage::UpdateCenter()
 
 void RadialSymmetryImage::GetCenter(float * pX_c, float * pY_c)
 {
-	pX_c=&m_x_c;
-	pY_c=&m_y_c;
+	*pX_c=m_x_c+(m_width+1)/2.0;
+	*pY_c=m_y_c+(m_height+1)/2.0;
 }
 
 size_t RadialSymmetryImage::Coord(size_t y, size_t x)
