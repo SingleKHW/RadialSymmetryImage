@@ -3,8 +3,8 @@
 Project		:	RadialSymmetryImage
 Description	:	RadialSymmetryImage class to calculate the center of 
 				a 2D image which has radial symmetry.
-				This is a C++ porting. To see the original work,
-				check <doi:10.1038/nmeth.2071>.
+				This is a C/C++  translation of the original work,
+				<doi:10.1038/nmeth.2071>.
 
 *
 
@@ -111,8 +111,7 @@ void RadialSymmetryImage::InitVars()
 	m_gradNumerator=1;
 	m_gradNumerator=1;
 
-	minimumFloat=0.0001f;
-	m_gradMax=(float)m_height/minimumFloat;
+	minimumFloat=0.0001f; //Typically, 1 pixel ~ 100 nm. 0.0001f ~ 0.01 nm. Float types can have 7 significant digits.
 
 	for(size_t y=0;y<m_height-1;y++)
 	{
@@ -205,20 +204,11 @@ void RadialSymmetryImage::CalcGradField()
 			m_gradDenominator=m_duFiltered[DCoord(y,x)]-m_dvFiltered[DCoord(y,x)];
 			m_gradNumerator=m_duFiltered[DCoord(y,x)]+m_dvFiltered[DCoord(y,x)];
 
-			//if the Slope is too big, set appropriate size. Criteria is @m_height/@minimumFloat
-			if(abs(m_gradNumerator) > m_gradMax) 
-			{
-				m_gradSlope[DCoord(y,x)]=m_gradMax;
-				//Intercept
-				m_gradIntercept[DCoord(y,x)]=m_gridY[DCoord(y,x)]-m_gradMax*m_gridX[DCoord(y,x)];
-				continue;
-			}
+			//if divide by 0
+			// set small enough denominator.
 
-			//to avoid divide by 0, compare the size of denominator with minimumFloat
-			if (m_gradDenominator<0)
-				m_gradDenominator=m_gradDenominator<-minimumFloat?m_gradDenominator:minimumFloat;
-			else
-				m_gradDenominator=m_gradDenominator>minimumFloat?m_gradDenominator:minimumFloat;
+			if (m_gradDenominator==0)
+				m_gradDenominator=minimumFloat;
 
 			m_gradSlope[DCoord(y,x)]=-m_gradNumerator/m_gradDenominator;
 			m_gradIntercept[DCoord(y,x)]=m_gridY[DCoord(y,x)]-(-m_gradNumerator/m_gradDenominator)*m_gridX[DCoord(y,x)];

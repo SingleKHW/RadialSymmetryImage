@@ -27,8 +27,10 @@ int main()
 	float a,b;
 	x_c=&a;
 	y_c=&b;
+
 	char * charImage=(char *)calloc(160*160,sizeof(char)); //File
 	uint8_t * image=(uint8_t *)calloc(160*160,sizeof(uint8_t)); //File
+	uint8_t * image_512=(uint8_t *)calloc(512*256,sizeof(uint8_t)); //File
 
 	ifstream imageFile("C:\\Users\\y\\Desktop\\HSMT\\test_bin\\2.p.bin",ios::in|ios::binary|ios::ate);
 
@@ -43,6 +45,7 @@ int main()
 			image[160*y+x]=(uint8_t)charImage[160*y+x];
 
 	RadialSymmetryImage RC(image,160,160);
+
 	for(int i=0;i<10;i++)
 	{
 		RC.GetCenter(x_c, y_c);
@@ -50,30 +53,55 @@ int main()
 
 	}
 	imageFile.close();
+
+
+	LARGE_INTEGER frequency;
+	LARGE_INTEGER start;
+	LARGE_INTEGER end;
+
+	double elapsedSeconds;
+	QueryPerformanceFrequency(&frequency);
+
+
+	clock_t begin_time = clock();
+	QueryPerformanceCounter(&start);
+
+	RadialSymmetryImage RC2(image,128,128);
+
+	for(size_t i=0;i<1000;i++)
+	{
+		RC2.UpdateCenter();
+	}
+	QueryPerformanceCounter(&end);
+
+	printf("%lf or %f, %f clokcs for 128x128 UpdateCenter()\n",(end.QuadPart - start.QuadPart)/(double)1000 / (double)frequency.QuadPart,float( clock () - begin_time ) /  CLOCKS_PER_SEC,float( clock () - begin_time ) );
+
+	begin_time = clock();
+	QueryPerformanceCounter(&start);
+
+	RadialSymmetryImage RC3(image,128,38);
+
+	for(size_t i=0;i<1000;i++)
+	{
+		RC3.UpdateCenter();
+	}
+	QueryPerformanceCounter(&end);
+
+	printf("%lf or %f, %f clokcs for 128x38 UpdateCenter()\n",(end.QuadPart - start.QuadPart)/(double)1000 / (double)frequency.QuadPart,float( clock () - begin_time ) /  CLOCKS_PER_SEC,float( clock () - begin_time ) );
+
+	begin_time = clock();
+	QueryPerformanceCounter(&start);
+
+	for(size_t i=0;i<1000;i++)
+	{
+		RC.UpdateCenter();
+	}
+	QueryPerformanceCounter(&end);
+
+	printf("%lf or %f, %f clokcs for 160x160 UpdateCenter()\n",(end.QuadPart - start.QuadPart)/(double)1000 / (double)frequency.QuadPart,float( clock () - begin_time ) /  CLOCKS_PER_SEC,float( clock () - begin_time ) );
+
 	free(image);
 	free(charImage);
-
-	//LARGE_INTEGER frequency;
-	//LARGE_INTEGER start;
-	//LARGE_INTEGER end;
-
-	//double elapsedSeconds;
-	//QueryPerformanceFrequency(&frequency);
-
-
-	//clock_t begin_time = clock();
-	//QueryPerformanceCounter(&start);
-
-	//for(size_t i=0;i<1000;i++)
-	//{
-	//	RC.UpdateCenter();
-	//}
-	//QueryPerformanceCounter(&end);
-
-	//printf("%lf or %f, %f clokcs for UpdateCenter()\n",(end.QuadPart - start.QuadPart)/(double)1000 / (double)frequency.QuadPart,float( clock () - begin_time ) /  CLOCKS_PER_SEC,float( clock () - begin_time ) );
-
-
-
 
 	return 0;
 }

@@ -3,8 +3,8 @@
 Project		:	RadialSymmetryImage
 Description	:	RadialSymmetryImage class to calculate the center of 
 				a 2D image which has radial symmetry.
-				This is a C++ porting. To see the original work,
-				check <doi:10.1038/nmeth.2071>.
+				This is a C/C++ translation of the original work,
+				<doi:10.1038/nmeth.2071>.
 
 *
 
@@ -37,8 +37,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 class RadialSymmetryImage
 {
 public:
-	// Constructor
-	// Take an image
+	// Constructor, take an image and its dimension
 	RadialSymmetryImage(uint8_t * image, size_t width, size_t height);
 
 	// Update the center. You will call it when new image acquired
@@ -81,7 +80,6 @@ protected:
 
 	float m_gradDenominator;
 	float m_gradNumerator;
-	float m_gradMax;
 	float minimumFloat;
 
 	//Variables for center fitting
