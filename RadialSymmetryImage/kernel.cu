@@ -3,6 +3,7 @@
 #include "device_launch_parameters.h"
 
 #include "RadialSymmetryImage.h"
+#include "RSImage_GPU.h"
 #include <Windows.h>
 #include <ctime>
 
@@ -34,6 +35,7 @@ int main()
 	char * charImage=(char *)calloc(160*160,sizeof(char)); //File
 	uint8_t * image=(uint8_t *)calloc(160*160,sizeof(uint8_t)); //File
 	uint8_t ** image2D=(uint8_t **)malloc(sizeof*image2D*160);
+
 	for(size_t y=0;y<160;y++)
 		image2D[y]=image+160*y;
 
@@ -50,17 +52,55 @@ int main()
 			image[160*y+x]=(uint8_t)charImage[160*y+x];
 
 
-	RadialSymmetryImage RC(image,160,160);
+	//RSImage_GPU RC(image,160,160);
+	dim3 grid, block;
+	grid.x=160/32;
+	grid.y=160/32;
+	block.x=32;
+	block.y=32;
+
+	float * h_x_c;
+	float * h_y_c;
+	float dummy1, dummy2;
+
+	dummy1=-5.0f;
+
+	h_x_c=&dummy1;
+	h_y_c=&dummy2;
+
+	h_x_c=(float*)malloc(160*160*sizeof*h_x_c);
+
+	h_x_c[0]=5.0;
+
+	size_t width=160;
+	size_t height=160;
+	size_t ROI_width=128;
+	size_t ROI_height=128;
+	size_t x_off=16;
+	size_t y_off=16;
+
+	RSImage_GPU *RSImage=new RSImage_GPU;
+	
+	initRSImage(RSImage,width,height,ROI_width,ROI_height,x_off,y_off);
+
+	cudaMemcpy(RSImage->d_image,image,width*height*sizeof*RSImage->d_image,cudaMemcpyHostToDevice);
+	//cudaMemcpy(RSImage->d_dervs,h_x_c,160*160*sizeof*h_x_c,cudaMemcpyHostToDevice);
+
+	//calcDervs<<<grid,block>>>(RSImage->d_image,RSImage->d_dervs);
+	calcDervs<<<grid,block>>>(RSImage);
+	calcDervsF<<<grid,block>>>(RSImage);
 
 	for(int i=0;i<10;i++)
 	{
-		RC.GetCenter(x_c, y_c);
-		printf("%f, %f\n", *x_c, *y_c);
+		//RC.GetCenter(x_c, y_c);
+		//printf("%f, %f\n", *x_c, *y_c);
 
 	}
 	imageFile.close();
 
-
+	freeRSImage(RSImage);
+	delete RSImage;
+	/*
 	LARGE_INTEGER frequency;
 	LARGE_INTEGER start;
 	LARGE_INTEGER end;
@@ -105,7 +145,8 @@ int main()
 	QueryPerformanceCounter(&end);
 
 	printf("%lf or %f, %f clokcs for 160x160 UpdateCenter()\n",(end.QuadPart - start.QuadPart)/(double)1000 / (double)frequency.QuadPart,float( clock () - begin_time ) /  CLOCKS_PER_SEC/(double)1000,float( clock () - begin_time ) );
-	
+	*/
+
 	free(image);
 	free(charImage);
 
