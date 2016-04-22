@@ -151,9 +151,11 @@ copy "$(CudaToolkitBinDir)\cudart*.dll" "$(OutDir)"</Command>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="RadialSymmetryImage.cpp" />
+    <ClCompile Include="RSImage_GPU.cu" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="RadialSymmetryImage.h" />
+    <ClInclude Include="RSImage_GPU.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

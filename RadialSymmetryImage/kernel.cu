@@ -1,6 +1,7 @@
 
 #include "cuda_runtime.h"
 #include "device_launch_parameters.h"
+
 #include "RadialSymmetryImage.h"
 #include <Windows.h>
 #include <ctime>
@@ -22,6 +23,8 @@ __global__ void addKernel(int *c, const int *a, const int *b)
 
 int main()
 {
+	/*memory allocation test*/
+
 	float *x_c;
 	float *y_c;
 	float a,b;
@@ -30,9 +33,11 @@ int main()
 
 	char * charImage=(char *)calloc(160*160,sizeof(char)); //File
 	uint8_t * image=(uint8_t *)calloc(160*160,sizeof(uint8_t)); //File
-	uint8_t * image_512=(uint8_t *)calloc(512*256,sizeof(uint8_t)); //File
+	uint8_t ** image2D=(uint8_t **)malloc(sizeof*image2D*160);
+	for(size_t y=0;y<160;y++)
+		image2D[y]=image+160*y;
 
-	ifstream imageFile("C:\\Users\\y\\Desktop\\HSMT\\test_bin\\2.p.bin",ios::in|ios::binary|ios::ate);
+	ifstream imageFile("C:\\Users\\y\\Documents\\MEGAsync\\Projects\\2016 HSMT\\2.p.bin",ios::in|ios::binary|ios::ate);
 
 	size_t size=imageFile.tellg();
 	imageFile.seekg (0, ios::beg);
@@ -43,6 +48,7 @@ int main()
 	for (size_t y=0;y<160;y++)
 		for (size_t x=0;x<160;x++)
 			image[160*y+x]=(uint8_t)charImage[160*y+x];
+
 
 	RadialSymmetryImage RC(image,160,160);
 
@@ -74,7 +80,7 @@ int main()
 	}
 	QueryPerformanceCounter(&end);
 
-	printf("%lf or %f, %f clokcs for 128x128 UpdateCenter()\n",(end.QuadPart - start.QuadPart)/(double)1000 / (double)frequency.QuadPart,float( clock () - begin_time ) /  CLOCKS_PER_SEC,float( clock () - begin_time ) );
+	printf("%lf or %f, %f clokcs for 128x128 UpdateCenter()\n",(end.QuadPart - start.QuadPart)/(double)1000 / (double)frequency.QuadPart,float( clock () - begin_time ) /  CLOCKS_PER_SEC/(double)1000,float( clock () - begin_time ) );
 
 	begin_time = clock();
 	QueryPerformanceCounter(&start);
@@ -87,7 +93,7 @@ int main()
 	}
 	QueryPerformanceCounter(&end);
 
-	printf("%lf or %f, %f clokcs for 128x38 UpdateCenter()\n",(end.QuadPart - start.QuadPart)/(double)1000 / (double)frequency.QuadPart,float( clock () - begin_time ) /  CLOCKS_PER_SEC,float( clock () - begin_time ) );
+	printf("%lf or %f, %f clokcs for 128x38 UpdateCenter()\n",(end.QuadPart - start.QuadPart)/(double)1000 / (double)frequency.QuadPart,float( clock () - begin_time ) /  CLOCKS_PER_SEC/(double)1000,float( clock () - begin_time ) );
 
 	begin_time = clock();
 	QueryPerformanceCounter(&start);
@@ -98,8 +104,8 @@ int main()
 	}
 	QueryPerformanceCounter(&end);
 
-	printf("%lf or %f, %f clokcs for 160x160 UpdateCenter()\n",(end.QuadPart - start.QuadPart)/(double)1000 / (double)frequency.QuadPart,float( clock () - begin_time ) /  CLOCKS_PER_SEC,float( clock () - begin_time ) );
-
+	printf("%lf or %f, %f clokcs for 160x160 UpdateCenter()\n",(end.QuadPart - start.QuadPart)/(double)1000 / (double)frequency.QuadPart,float( clock () - begin_time ) /  CLOCKS_PER_SEC/(double)1000,float( clock () - begin_time ) );
+	
 	free(image);
 	free(charImage);
 
