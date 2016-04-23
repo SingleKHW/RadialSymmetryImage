@@ -40,6 +40,18 @@ public:
 	// Constructor, take an image and its dimension
 	RadialSymmetryImage(uint8_t * image, size_t width, size_t height);
 
+	//derivatives along 45-degree shifted coordinates (u and v)
+	float * m_du;
+	float * m_dv;
+
+	//Filtered derivatives
+	float * m_duFiltered;
+	float * m_dvFiltered;
+	float smmw;	
+	float m_x_centroid;	//X center
+	float m_y_centroid;	//Y center
+	float m_x_c;	//X center
+	float m_y_c;	//Y center
 	// Update the center. You will call it when new image acquired
 	void UpdateCenter();
 
@@ -54,23 +66,15 @@ protected:
 
 	size_t m_width;
 	size_t m_height;
-	float m_x_c;	//X center
-	float m_y_c;	//Y center
-	float m_x_centroid;	//X center
-	float m_y_centroid;	//Y center
+
+
 
 
 	//midpoint grid coordinates
 	float * m_gridX;
 	float * m_gridY;
 
-	//derivatives along 45-degree shifted coordinates (u and v)
-	float * m_du;
-	float * m_dv;
 
-	//Filtered derivatives
-	float * m_duFiltered;
-	float * m_dvFiltered;
 
 	//Gradient magnitude and slope
 	float * m_gradMag;
@@ -85,7 +89,6 @@ protected:
 	//Variables for center fitting
 	float wm2p1;
 	float sw;
-	float smmw;
 	float smw;
 	float smbw;
 	float sbw;

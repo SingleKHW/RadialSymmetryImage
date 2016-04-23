@@ -111,7 +111,7 @@ void RadialSymmetryImage::InitVars()
 	m_gradNumerator=1;
 	m_gradNumerator=1;
 
-	minimumFloat=0.0001f; //Typically, 1 pixel ~ 100 nm. 0.0001f ~ 0.01 nm. Float types can have 7 significant digits.
+	minimumFloat=0.00001001f; //Typically, 1 pixel ~ 100 nm. 0.0001f ~ 0.01 nm. Float types can have 7 significant digits.
 
 	for(size_t y=0;y<m_height-1;y++)
 	{

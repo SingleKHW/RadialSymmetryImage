@@ -35,7 +35,8 @@ int main()
 	char * charImage=(char *)calloc(160*160,sizeof(char)); //File
 	uint8_t * image=(uint8_t *)calloc(160*160,sizeof(uint8_t)); //File
 	uint8_t ** image2D=(uint8_t **)malloc(sizeof*image2D*160);
-
+	uint8_t * image2=(uint8_t *)calloc(160*160,sizeof(uint8_t));
+	float *di=(float*)malloc(160*160*sizeof(float));
 	for(size_t y=0;y<160;y++)
 		image2D[y]=image+160*y;
 
@@ -52,12 +53,8 @@ int main()
 			image[160*y+x]=(uint8_t)charImage[160*y+x];
 
 
-	//RSImage_GPU RC(image,160,160);
-	dim3 grid, block;
-	grid.x=160/32;
-	grid.y=160/32;
-	block.x=32;
-	block.y=32;
+	RadialSymmetryImage RC(image,160,160);
+
 
 	float * h_x_c;
 	float * h_y_c;
@@ -68,39 +65,37 @@ int main()
 	h_x_c=&dummy1;
 	h_y_c=&dummy2;
 
-	h_x_c=(float*)malloc(160*160*sizeof*h_x_c);
-
-	h_x_c[0]=5.0;
-
 	size_t width=160;
 	size_t height=160;
 	size_t ROI_width=128;
-	size_t ROI_height=128;
-	size_t x_off=16;
-	size_t y_off=16;
+	size_t ROI_height=32;
+	size_t x_off=(width-ROI_width)/2;
+	size_t y_off=(height-ROI_height)/2;
 
-	RSImage_GPU *RSImage=new RSImage_GPU;
-	
-	initRSImage(RSImage,width,height,ROI_width,ROI_height,x_off,y_off);
+	dim3 grid, block;
+	grid.x=ROI_width/32;
+	grid.y=ROI_height/32;
+	block.x=32;
+	block.y=32;
+
+	RSImage_GPU *RSImage=(RSImage_GPU*)malloc(sizeof*RSImage);
+
+	initRSImage(RSImage,width,height,ROI_width,ROI_height,x_off,y_off,RC.m_x_centroid,RC.m_y_centroid);
 
 	cudaMemcpy(RSImage->d_image,image,width*height*sizeof*RSImage->d_image,cudaMemcpyHostToDevice);
 	//cudaMemcpy(RSImage->d_dervs,h_x_c,160*160*sizeof*h_x_c,cudaMemcpyHostToDevice);
 
-	//calcDervs<<<grid,block>>>(RSImage->d_image,RSImage->d_dervs);
-	calcDervs<<<grid,block>>>(RSImage);
-	calcDervsF<<<grid,block>>>(RSImage);
+	calcDervs<<<grid,block>>>(RSImage->d_image,RSImage->d_du,RSImage->d_dv,RSImage->d_x_off,RSImage->d_y_off,RSImage->d_width, RSImage->d_height, RSImage->d_ROIwidth, RSImage->d_ROIheight);
+	calcDervsF<<<grid,block>>>(RSImage->d_du,RSImage->d_duF,RSImage->d_dv,RSImage->d_dvF, RSImage->d_ROIwidth, RSImage->d_ROIheight,RSImage->d_smw, RSImage->d_smmw, RSImage->d_sw, RSImage->d_smbw, RSImage->d_sbw);
+	calcGrads<<<grid,block>>>(RSImage->d_duF, RSImage->d_dvF, RSImage->d_ROIwidth, RSImage->d_ROIheight, RSImage->d_x_c, RSImage->d_y_c, RSImage->d_x_c_old, RSImage->d_y_c_old, RSImage->d_sw, RSImage->d_smmw, RSImage->d_smw, RSImage->d_smbw, RSImage->d_sbw);
+	calcCenter<<<1,1>>>(RSImage->d_x_c, RSImage->d_y_c, RSImage->d_x_c_old, RSImage->d_y_c_old, RSImage->d_det, RSImage->d_sw, RSImage->d_smmw, RSImage->d_smw, RSImage->d_smbw, RSImage->d_sbw);
 
-	for(int i=0;i<10;i++)
-	{
-		//RC.GetCenter(x_c, y_c);
-		//printf("%f, %f\n", *x_c, *y_c);
+	cudaMemcpy(h_x_c,RSImage->d_x_c,sizeof*h_x_c,cudaMemcpyDeviceToHost);
 
-	}
-	imageFile.close();
+	printf("d_x_c=%f, RC.m_x_c=%f\n",*h_x_c, RC.m_x_c);
 
-	freeRSImage(RSImage);
-	delete RSImage;
-	/*
+
+	
 	LARGE_INTEGER frequency;
 	LARGE_INTEGER start;
 	LARGE_INTEGER end;
@@ -112,32 +107,6 @@ int main()
 	clock_t begin_time = clock();
 	QueryPerformanceCounter(&start);
 
-	RadialSymmetryImage RC2(image,128,128);
-
-	for(size_t i=0;i<1000;i++)
-	{
-		RC2.UpdateCenter();
-	}
-	QueryPerformanceCounter(&end);
-
-	printf("%lf or %f, %f clokcs for 128x128 UpdateCenter()\n",(end.QuadPart - start.QuadPart)/(double)1000 / (double)frequency.QuadPart,float( clock () - begin_time ) /  CLOCKS_PER_SEC/(double)1000,float( clock () - begin_time ) );
-
-	begin_time = clock();
-	QueryPerformanceCounter(&start);
-
-	RadialSymmetryImage RC3(image,128,38);
-
-	for(size_t i=0;i<1000;i++)
-	{
-		RC3.UpdateCenter();
-	}
-	QueryPerformanceCounter(&end);
-
-	printf("%lf or %f, %f clokcs for 128x38 UpdateCenter()\n",(end.QuadPart - start.QuadPart)/(double)1000 / (double)frequency.QuadPart,float( clock () - begin_time ) /  CLOCKS_PER_SEC/(double)1000,float( clock () - begin_time ) );
-
-	begin_time = clock();
-	QueryPerformanceCounter(&start);
-
 	for(size_t i=0;i<1000;i++)
 	{
 		RC.UpdateCenter();
@@ -145,11 +114,59 @@ int main()
 	QueryPerformanceCounter(&end);
 
 	printf("%lf or %f, %f clokcs for 160x160 UpdateCenter()\n",(end.QuadPart - start.QuadPart)/(double)1000 / (double)frequency.QuadPart,float( clock () - begin_time ) /  CLOCKS_PER_SEC/(double)1000,float( clock () - begin_time ) );
-	*/
+
+	cudaDeviceSynchronize();
+	begin_time = clock();
+	QueryPerformanceCounter(&start);
+
+	for(size_t i=0;i<1000;i++)
+	{
+		calcDervs<<<grid,block>>>(RSImage->d_image,RSImage->d_du,RSImage->d_dv,RSImage->d_x_off,RSImage->d_y_off,RSImage->d_width, RSImage->d_height, RSImage->d_ROIwidth, RSImage->d_ROIheight);
+		calcDervsF<<<grid,block>>>(RSImage->d_du,RSImage->d_duF,RSImage->d_dv,RSImage->d_dvF, RSImage->d_ROIwidth, RSImage->d_ROIheight,RSImage->d_smw, RSImage->d_smmw, RSImage->d_sw, RSImage->d_smbw, RSImage->d_sbw);
+		calcGrads<<<grid,block>>>(RSImage->d_duF, RSImage->d_dvF, RSImage->d_ROIwidth, RSImage->d_ROIheight, RSImage->d_x_c, RSImage->d_y_c, RSImage->d_x_c_old, RSImage->d_y_c_old, RSImage->d_sw, RSImage->d_smmw, RSImage->d_smw, RSImage->d_smbw, RSImage->d_sbw);
+		calcCenter<<<1,1>>>(RSImage->d_x_c, RSImage->d_y_c, RSImage->d_x_c_old, RSImage->d_y_c_old, RSImage->d_det, RSImage->d_sw, RSImage->d_smmw, RSImage->d_smw, RSImage->d_smbw, RSImage->d_sbw);
+	}
+	cudaDeviceSynchronize();
+
+	QueryPerformanceCounter(&end);
+
+	printf("%lf or %f, %f clokcs for %dx%d CUDA\n",(end.QuadPart - start.QuadPart)/(double)1000 / (double)frequency.QuadPart,float( clock () - begin_time ) /  CLOCKS_PER_SEC/(double)1000,float( clock () - begin_time ) , ROI_width, ROI_height);
+	
+	cudaDeviceSynchronize();
+	begin_time = clock();
+	QueryPerformanceCounter(&start);
+
+	for(size_t i=0;i<1000;i++)
+	{
+		cudaMemcpy(di,RSImage->d_du,(ROI_width-1)*(ROI_height-1)*sizeof*di,cudaMemcpyDeviceToHost);
+	}
+	cudaDeviceSynchronize();
+	QueryPerformanceCounter(&end);
+
+	printf("Device to host, %lf or %f, %f clokcs for %dx%d CUDA\n",(end.QuadPart - start.QuadPart)/(double)1000 / (double)frequency.QuadPart,float( clock () - begin_time ) /  CLOCKS_PER_SEC/(double)1000,float( clock () - begin_time ) , ROI_width, ROI_height);
+
+	begin_time = clock();
+	QueryPerformanceCounter(&start);
+
+	float sum_t=0;
+	for(size_t i=0;i<(1<<24);i++)
+	{
+		sum_t=0;
+		for(size_t y=0;y<ROI_height-1;y++)
+			for(size_t x=0;x<ROI_width-1;x++)
+				sum_t=di[y*(ROI_width-1)+x];
+	}
+	QueryPerformanceCounter(&end);
+
+	printf("Summation speed %lf or %f, %f clokcs for %dx%d CUDA\n",(end.QuadPart - start.QuadPart)/(double)1000 / (double)frequency.QuadPart,float( clock () - begin_time ) /  CLOCKS_PER_SEC/(double)1000,float( clock () - begin_time ) , ROI_width, ROI_height);
+	
 
 	free(image);
 	free(charImage);
+	imageFile.close();
 
+	freeRSImage(RSImage);
+	free(RSImage);
 	return 0;
 }
 
