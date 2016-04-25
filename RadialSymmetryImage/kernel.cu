@@ -34,14 +34,16 @@ int main()
 	y_c=&b;
 
 	char * charImage=(char *)calloc(160*160,sizeof(char)); //File
-	uint8_t * image=(uint8_t *)calloc(160*160,sizeof(uint8_t)); //File
+	//uint8_t * image=(uint8_t *)calloc(160*160,sizeof(uint8_t)); //File
+	uint8_t * image;
+	cudaMallocHost(&image,160*160*sizeof*image);
 	uint8_t ** image2D=(uint8_t **)malloc(sizeof*image2D*160);
 	uint8_t * image2=(uint8_t *)calloc(160*160,sizeof(uint8_t));
 	float *di=(float*)malloc(160*160*sizeof(float));
 	for(size_t y=0;y<160;y++)
 		image2D[y]=image+160*y;
 
-	ifstream imageFile("C:\\Users\\y\\Documents\\MEGAsync\\Projects\\2016 HSMT\\2.p.bin",ios::in|ios::binary|ios::ate);
+	ifstream imageFile("C:\\2.p.bin",ios::in|ios::binary|ios::ate);
 
 	size_t size=imageFile.tellg();
 	imageFile.seekg (0, ios::beg);
@@ -66,11 +68,10 @@ int main()
 	h_x_c=&dummy1;
 	h_y_c=&dummy2;
 
-
 	size_t width=160;
 	size_t height=160;
 	size_t ROI_width=128;
-	size_t ROI_height=32;
+	size_t ROI_height=128;
 	size_t x_off=(width-ROI_width)/2;
 	size_t y_off=(height-ROI_height)/2;
 
@@ -133,6 +134,11 @@ int main()
 
 	printf("%lf or %f, %f clokcs for 160x160 UpdateCenter()\n",(end.QuadPart - start.QuadPart)/(double)1000 / (double)frequency.QuadPart,float( clock () - begin_time ) /  CLOCKS_PER_SEC/(double)1000,float( clock () - begin_time ) );
 
+	cudaStream_t stream1, stream2, stream3;
+	cudaStreamCreate(&stream1);
+	cudaStreamCreate(&stream2);
+	cudaStreamCreate(&stream3);
+
 	cudaDeviceSynchronize();
 	begin_time = clock();
 	QueryPerformanceCounter(&start);
@@ -149,19 +155,39 @@ int main()
 	QueryPerformanceCounter(&end);
 
 	printf("%lf or %f, %f clokcs for %dx%d CUDA\n",(end.QuadPart - start.QuadPart)/(double)1000 / (double)frequency.QuadPart,float( clock () - begin_time ) /  CLOCKS_PER_SEC/(double)1000,float( clock () - begin_time ) , ROI_width, ROI_height);
-	
+
 	cudaDeviceSynchronize();
 	begin_time = clock();
 	QueryPerformanceCounter(&start);
 
 	for(size_t i=0;i<1000;i++)
 	{
-		cudaMemcpy(di,RSImage->d_du,(ROI_width-1)*(ROI_height-1)*sizeof*di,cudaMemcpyDeviceToHost);
+		calcDervs<<<grid,block,0,stream1>>>(RSImage->d_image,RSImage->d_du,RSImage->d_dv,RSImage->d_x_off,RSImage->d_y_off,RSImage->d_width, RSImage->d_height, RSImage->d_ROIwidth, RSImage->d_ROIheight);
+		calcDervsF<<<grid,block,0,stream2>>>(RSImage->d_du,RSImage->d_duF,RSImage->d_dv,RSImage->d_dvF, RSImage->d_ROIwidth, RSImage->d_ROIheight,RSImage->d_smw, RSImage->d_smmw, RSImage->d_sw, RSImage->d_smbw, RSImage->d_sbw);
+		calcGrads<<<grid,block,0,stream3>>>(RSImage->d_duF, RSImage->d_dvF, RSImage->d_ROIwidth, RSImage->d_ROIheight, RSImage->d_x_c, RSImage->d_y_c, RSImage->d_x_c_old, RSImage->d_y_c_old, RSImage->d_sw, RSImage->d_smmw, RSImage->d_smw, RSImage->d_smbw, RSImage->d_sbw);
+		//calcCenter<<<1,1>>>(RSImage->d_x_c, RSImage->d_y_c, RSImage->d_x_c_old, RSImage->d_y_c_old, RSImage->d_det, RSImage->d_sw, RSImage->d_smmw, RSImage->d_smw, RSImage->d_smbw, RSImage->d_sbw);
 	}
 	cudaDeviceSynchronize();
+
 	QueryPerformanceCounter(&end);
 
-	printf("Device to host, %lf or %f, %f clokcs for %dx%d CUDA\n",(end.QuadPart - start.QuadPart)/(double)1000 / (double)frequency.QuadPart,float( clock () - begin_time ) /  CLOCKS_PER_SEC/(double)1000,float( clock () - begin_time ) , ROI_width, ROI_height);
+	printf("%lf or %f, %f clokcs for Multistream %dx%d CUDA\n",(end.QuadPart - start.QuadPart)/(double)1000 / (double)frequency.QuadPart,float( clock () - begin_time ) /  CLOCKS_PER_SEC/(double)1000,float( clock () - begin_time ) , ROI_width, ROI_height);
+	
+	cudaDeviceSynchronize();
+	begin_time = clock();
+	QueryPerformanceCounter(&start);
+
+	image[0]=10;
+	printf("\n Pinned 0=%d",image[0]);
+	for(size_t i=0;i<1000;i++)
+	{
+		//cudaMemcpy(di,RSImage->d_du,(ROI_width-1)*(ROI_height-1)*sizeof*di,cudaMemcpyDeviceToHost);
+		cudaMemcpyAsync(RSImage->d_image,image,width*height*sizeof*RSImage->d_image,cudaMemcpyHostToDevice,stream1);
+	}
+	cudaStreamSynchronize(stream1);
+	QueryPerformanceCounter(&end);
+
+	printf("Host to device, %lf or %f, %f clokcs for %dx%d CUDA\n",(end.QuadPart - start.QuadPart)/(double)1000 / (double)frequency.QuadPart,float( clock () - begin_time ) /  CLOCKS_PER_SEC/(double)1000,float( clock () - begin_time ) , ROI_width, ROI_height);
 
 	begin_time = clock();
 	QueryPerformanceCounter(&start);
@@ -179,7 +205,7 @@ int main()
 	printf("Summation speed %lf or %f, %f clokcs for %dx%d CUDA\n",(end.QuadPart - start.QuadPart)/(double)1000 / (double)frequency.QuadPart,float( clock () - begin_time ) /  CLOCKS_PER_SEC/(double)1000,float( clock () - begin_time ) , ROI_width, ROI_height);
 	
 
-	free(image);
+	cudaFreeHost(image);
 	free(charImage);
 	imageFile.close();
 

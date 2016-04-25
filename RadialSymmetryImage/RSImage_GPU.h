@@ -79,6 +79,7 @@ __global__ void calcDervsF(float *d_du, float *d_duF, float *d_dv, float *d_dvF,
 	int i=blockDim.x*blockIdx.x+threadIdx.x;
 	int j=blockDim.y*blockIdx.y+threadIdx.y;
 
+
 	if(i>*d_ROIwidth-2)
 	{
 		if(j>*d_ROIheight-2)
