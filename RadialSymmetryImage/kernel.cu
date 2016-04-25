@@ -25,24 +25,44 @@ __global__ void addKernel(int *c, const int *a, const int *b)
 
 int main()
 {
-	/*memory allocation test*/
+	//image dimension
+	size_t width=160;
+	size_t height=160;
+	size_t ROI_width=128;
+	size_t ROI_height=96;
+	size_t x_off=(width-ROI_width)/2;
+	size_t y_off=(height-ROI_height)/2;
 
-	float *x_c;
-	float *y_c;
-	float a,b;
-	x_c=&a;
-	y_c=&b;
+	//GPU thread structure
+	dim3 grid, block;
+	size_t warpSize=16;
+	grid.x=ROI_width/warpSize;
+	grid.y=ROI_height/warpSize;
+	block.x=warpSize;
+	block.y=warpSize;
 
-	char * charImage=(char *)calloc(160*160,sizeof(char)); //File
-	//uint8_t * image=(uint8_t *)calloc(160*160,sizeof(uint8_t)); //File
-	uint8_t * image;
-	cudaMallocHost(&image,160*160*sizeof*image);
-	uint8_t ** image2D=(uint8_t **)malloc(sizeof*image2D*160);
-	uint8_t * image2=(uint8_t *)calloc(160*160,sizeof(uint8_t));
-	float *di=(float*)malloc(160*160*sizeof(float));
-	for(size_t y=0;y<160;y++)
-		image2D[y]=image+160*y;
+	size_t max_stream=10;
+	cudaStream_t *streams=new cudaStream_t[max_stream];
 
+	RSImage_GPU **RSImage=(RSImage_GPU**)malloc(max_stream*sizeof*RSImage);
+
+	char * charImage=(char *)calloc(width*height,sizeof(char)); //an image from a file
+	//pinned images
+	uint8_t ** image=(uint8_t**)malloc(max_stream*sizeof*image);
+	float **di=(float**)malloc(max_stream*sizeof*di);
+	float **di2=(float**)malloc(max_stream*sizeof*di2);
+
+	for(size_t i=0;i<max_stream;i++)
+	{
+		cudaMallocHost(&image[i],width*height*sizeof*(image[i]));
+		cudaMallocHost(&di[i],(ROI_width-1)*(ROI_height)*sizeof*(di[i]));
+		cudaMallocHost(&di2[i],(ROI_width-1)*(ROI_height)*sizeof*(di2[i]));
+
+		cudaStreamCreate(&(streams[i]));
+		RSImage[i]=(RSImage_GPU*)malloc(sizeof*RSImage[i]);
+	}
+	
+	//read image
 	ifstream imageFile("C:\\2.p.bin",ios::in|ios::binary|ios::ate);
 
 	size_t size=imageFile.tellg();
@@ -51,75 +71,28 @@ int main()
 	printf("file sizeis %d\n",size);
 	imageFile.read(charImage,size);
 
-	for (size_t y=0;y<160;y++)
-		for (size_t x=0;x<160;x++)
-			image[160*y+x]=(uint8_t)charImage[160*y+x];
+	for (size_t y=0;y<height;y++)
+		for (size_t x=0;x<width;x++)
+		{	
+			for(size_t i=0;i<max_stream;i++)
+			{
+				image[i][width*y+x]=(uint8_t)charImage[width*y+x];
+			}
+		}
 
-
-	RadialSymmetryImage RC(image,160,160);
-
-
-	float * h_x_c;
-	float * h_y_c;
-	float dummy1, dummy2;
-
-	dummy1=-5.0f;
-
-	h_x_c=&dummy1;
-	h_y_c=&dummy2;
-
-	size_t width=160;
-	size_t height=160;
-	size_t ROI_width=128;
-	size_t ROI_height=128;
-	size_t x_off=(width-ROI_width)/2;
-	size_t y_off=(height-ROI_height)/2;
-
-	dim3 grid, block;
-	size_t warpSize=16;
-	grid.x=ROI_width/warpSize;
-	grid.y=ROI_height/warpSize;
-	block.x=warpSize;
-	block.y=warpSize;
-
-	RSImage_GPU *RSImage=(RSImage_GPU*)malloc(sizeof*RSImage);
-
-	initRSImage(RSImage,width,height,ROI_width,ROI_height,x_off,y_off,RC.m_x_centroid,RC.m_y_centroid);
-
-	cudaResourceDesc resDesc;
-	memset(&resDesc, 0, sizeof(resDesc));
-	resDesc.resType = cudaResourceTypeLinear;
-	resDesc.res.linear.devPtr = RSImage->d_du;
-	resDesc.res.linear.desc.f = cudaChannelFormatKindFloat;
-	resDesc.res.linear.desc.x = 32; // bits per channel
-	resDesc.res.linear.sizeInBytes = (ROI_width-1)*(ROI_height-1)*sizeof(float);
-
-	cudaTextureDesc texDesc;
-	memset(&texDesc, 0, sizeof(texDesc));
-	texDesc.readMode = cudaReadModeElementType;
-
-	cudaTextureObject_t tex=0;
-	cudaCreateTextureObject(&tex, &resDesc, &texDesc, NULL);
-
-	cudaMemcpy(RSImage->d_image,image,width*height*sizeof*RSImage->d_image,cudaMemcpyHostToDevice);
-	//cudaMemcpy(RSImage->d_dervs,h_x_c,160*160*sizeof*h_x_c,cudaMemcpyHostToDevice);
-
-	calcDervs<<<grid,block>>>(RSImage->d_image,RSImage->d_du,RSImage->d_dv,RSImage->d_x_off,RSImage->d_y_off,RSImage->d_width, RSImage->d_height, RSImage->d_ROIwidth, RSImage->d_ROIheight);
-	calcDervsF<<<grid,block>>>(RSImage->d_du,RSImage->d_duF,RSImage->d_dv,RSImage->d_dvF, RSImage->d_ROIwidth, RSImage->d_ROIheight,RSImage->d_smw, RSImage->d_smmw, RSImage->d_sw, RSImage->d_smbw, RSImage->d_sbw);
-	calcGrads<<<grid,block>>>(RSImage->d_duF, RSImage->d_dvF, RSImage->d_ROIwidth, RSImage->d_ROIheight, RSImage->d_x_c, RSImage->d_y_c, RSImage->d_x_c_old, RSImage->d_y_c_old, RSImage->d_sw, RSImage->d_smmw, RSImage->d_smw, RSImage->d_smbw, RSImage->d_sbw);
-	calcCenter<<<1,1>>>(RSImage->d_x_c, RSImage->d_y_c, RSImage->d_x_c_old, RSImage->d_y_c_old, RSImage->d_det, RSImage->d_sw, RSImage->d_smmw, RSImage->d_smw, RSImage->d_smbw, RSImage->d_sbw);
-
-	cudaMemcpy(h_x_c,RSImage->d_x_c,sizeof*h_x_c,cudaMemcpyDeviceToHost);
-
-	printf("d_x_c=%f, RC.m_x_c=%f\n",*h_x_c, RC.m_x_c);
-
-
+	//CPU image
+	RadialSymmetryImage RC(image[0],160,160);
+	
+	//GPU image
+	for(size_t i=0;i<max_stream;i++)
+	{
+		initRSImage(RSImage[i],image[i],width,height,ROI_width,ROI_height,x_off,y_off,RC.m_x_centroid,RC.m_y_centroid);
+	}
 	
 	LARGE_INTEGER frequency;
 	LARGE_INTEGER start;
 	LARGE_INTEGER end;
 
-	double elapsedSeconds;
 	QueryPerformanceFrequency(&frequency);
 
 
@@ -134,83 +107,58 @@ int main()
 
 	printf("%lf or %f, %f clokcs for 160x160 UpdateCenter()\n",(end.QuadPart - start.QuadPart)/(double)1000 / (double)frequency.QuadPart,float( clock () - begin_time ) /  CLOCKS_PER_SEC/(double)1000,float( clock () - begin_time ) );
 
-	cudaStream_t stream1, stream2, stream3;
-	cudaStreamCreate(&stream1);
-	cudaStreamCreate(&stream2);
-	cudaStreamCreate(&stream3);
+	//warming-up
+	transferRSImageHtoD(RSImage[0],streams[0]);
+	updateRSImageCenter(RSImage[0], grid, block,streams[0]);
+	transferRSImageDtoH(RSImage[0],streams[0]);
+	calcCenter(RSImage[0],streams[0]);
 
-	cudaDeviceSynchronize();
-	begin_time = clock();
-	QueryPerformanceCounter(&start);
+	size_t cpu_holding=0;
+	for(size_t trial=0;trial<10;trial++){
+		cudaDeviceSynchronize();
+		begin_time = clock();
+		QueryPerformanceCounter(&start);
 
-	for(size_t i=0;i<1000;i++)
-	{
-		calcDervs<<<grid,block>>>(RSImage->d_image,RSImage->d_du,RSImage->d_dv,RSImage->d_x_off,RSImage->d_y_off,RSImage->d_width, RSImage->d_height, RSImage->d_ROIwidth, RSImage->d_ROIheight);
-		calcDervsF<<<grid,block>>>(RSImage->d_du,RSImage->d_duF,RSImage->d_dv,RSImage->d_dvF, RSImage->d_ROIwidth, RSImage->d_ROIheight,RSImage->d_smw, RSImage->d_smmw, RSImage->d_sw, RSImage->d_smbw, RSImage->d_sbw);
-		calcGrads<<<grid,block>>>(RSImage->d_duF, RSImage->d_dvF, RSImage->d_ROIwidth, RSImage->d_ROIheight, RSImage->d_x_c, RSImage->d_y_c, RSImage->d_x_c_old, RSImage->d_y_c_old, RSImage->d_sw, RSImage->d_smmw, RSImage->d_smw, RSImage->d_smbw, RSImage->d_sbw);
-		//calcCenter<<<1,1>>>(RSImage->d_x_c, RSImage->d_y_c, RSImage->d_x_c_old, RSImage->d_y_c_old, RSImage->d_det, RSImage->d_sw, RSImage->d_smmw, RSImage->d_smw, RSImage->d_smbw, RSImage->d_sbw);
+		for(size_t i=1;i<1000;i++)
+		{
+			//printf("Cursor: %d\n",i);
+			transferRSImageHtoD(RSImage[i%max_stream],streams[i%max_stream]);
+			updateRSImageCenter(RSImage[i%max_stream], grid, block,streams[i%max_stream]);
+			transferRSImageDtoH(RSImage[i%max_stream],streams[i%max_stream]);
+			calcCenter(RSImage[(i-cpu_holding)%max_stream],streams[(i-cpu_holding)%max_stream]);
+			//calcCenter<<<1,1>>>(RSImage->d_x_c, RSImage->d_y_c, RSImage->d_x_c_old, RSImage->d_y_c_old, RSImage->d_det, RSImage->d_sw, RSImage->d_smmw, RSImage->d_smw, RSImage->d_smbw, RSImage->d_sbw);
+		}
+
+		for(size_t i=0;i<cpu_holding;i++) calcCenter(RSImage[(i-1)%max_stream],streams[(i-1)%max_stream]);
+
+		cudaDeviceSynchronize();
+
+		QueryPerformanceCounter(&end);
+
+		printf("%lf or %f, %f clokcs for %dx%d CUDA\n",(end.QuadPart - start.QuadPart)/(double)1000 / (double)frequency.QuadPart,float( clock () - begin_time ) /  CLOCKS_PER_SEC/(double)1000,float( clock () - begin_time ) , ROI_width, ROI_height);
 	}
-	cudaDeviceSynchronize();
+	//free memory
 
-	QueryPerformanceCounter(&end);
+	printf("Center position_GPU is (%f, %f)\nCenter position_CPU is (%f, %f)\n",RSImage[0]->h_x_c,RSImage[0]->h_y_c,RC.m_x_c,RC.m_y_c);
 
-	printf("%lf or %f, %f clokcs for %dx%d CUDA\n",(end.QuadPart - start.QuadPart)/(double)1000 / (double)frequency.QuadPart,float( clock () - begin_time ) /  CLOCKS_PER_SEC/(double)1000,float( clock () - begin_time ) , ROI_width, ROI_height);
-
-	cudaDeviceSynchronize();
-	begin_time = clock();
-	QueryPerformanceCounter(&start);
-
-	for(size_t i=0;i<1000;i++)
+	for(size_t i=0;i<max_stream;i++)
 	{
-		calcDervs<<<grid,block,0,stream1>>>(RSImage->d_image,RSImage->d_du,RSImage->d_dv,RSImage->d_x_off,RSImage->d_y_off,RSImage->d_width, RSImage->d_height, RSImage->d_ROIwidth, RSImage->d_ROIheight);
-		calcDervsF<<<grid,block,0,stream2>>>(RSImage->d_du,RSImage->d_duF,RSImage->d_dv,RSImage->d_dvF, RSImage->d_ROIwidth, RSImage->d_ROIheight,RSImage->d_smw, RSImage->d_smmw, RSImage->d_sw, RSImage->d_smbw, RSImage->d_sbw);
-		calcGrads<<<grid,block,0,stream3>>>(RSImage->d_duF, RSImage->d_dvF, RSImage->d_ROIwidth, RSImage->d_ROIheight, RSImage->d_x_c, RSImage->d_y_c, RSImage->d_x_c_old, RSImage->d_y_c_old, RSImage->d_sw, RSImage->d_smmw, RSImage->d_smw, RSImage->d_smbw, RSImage->d_sbw);
-		//calcCenter<<<1,1>>>(RSImage->d_x_c, RSImage->d_y_c, RSImage->d_x_c_old, RSImage->d_y_c_old, RSImage->d_det, RSImage->d_sw, RSImage->d_smmw, RSImage->d_smw, RSImage->d_smbw, RSImage->d_sbw);
+		cudaFreeHost(image[i]);
+		cudaFreeHost(di[i]);
+		cudaFreeHost(di2[i]);
+		freeRSImage(RSImage[i]);
 	}
-	cudaDeviceSynchronize();
+	//free streamed arrays
+	free(image);
+	free(di);
+	free(di2);
+	free(RSImage);
+	free(streams);
 
-	QueryPerformanceCounter(&end);
-
-	printf("%lf or %f, %f clokcs for Multistream %dx%d CUDA\n",(end.QuadPart - start.QuadPart)/(double)1000 / (double)frequency.QuadPart,float( clock () - begin_time ) /  CLOCKS_PER_SEC/(double)1000,float( clock () - begin_time ) , ROI_width, ROI_height);
-	
-	cudaDeviceSynchronize();
-	begin_time = clock();
-	QueryPerformanceCounter(&start);
-
-	image[0]=10;
-	printf("\n Pinned 0=%d",image[0]);
-	for(size_t i=0;i<1000;i++)
-	{
-		//cudaMemcpy(di,RSImage->d_du,(ROI_width-1)*(ROI_height-1)*sizeof*di,cudaMemcpyDeviceToHost);
-		cudaMemcpyAsync(RSImage->d_image,image,width*height*sizeof*RSImage->d_image,cudaMemcpyHostToDevice,stream1);
-	}
-	cudaStreamSynchronize(stream1);
-	QueryPerformanceCounter(&end);
-
-	printf("Host to device, %lf or %f, %f clokcs for %dx%d CUDA\n",(end.QuadPart - start.QuadPart)/(double)1000 / (double)frequency.QuadPart,float( clock () - begin_time ) /  CLOCKS_PER_SEC/(double)1000,float( clock () - begin_time ) , ROI_width, ROI_height);
-
-	begin_time = clock();
-	QueryPerformanceCounter(&start);
-
-	float sum_t=0;
-	for(size_t i=0;i<(1<<24);i++)
-	{
-		sum_t=0;
-		for(size_t y=0;y<ROI_height-1;y++)
-			for(size_t x=0;x<ROI_width-1;x++)
-				sum_t=di[y*(ROI_width-1)+x];
-	}
-	QueryPerformanceCounter(&end);
-
-	printf("Summation speed %lf or %f, %f clokcs for %dx%d CUDA\n",(end.QuadPart - start.QuadPart)/(double)1000 / (double)frequency.QuadPart,float( clock () - begin_time ) /  CLOCKS_PER_SEC/(double)1000,float( clock () - begin_time ) , ROI_width, ROI_height);
-	
-
-	cudaFreeHost(image);
+	//free image files
 	free(charImage);
 	imageFile.close();
 
-	freeRSImage(RSImage);
-	free(RSImage);
 	return 0;
 }
 
