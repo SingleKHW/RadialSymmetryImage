@@ -62,17 +62,16 @@ __global__ void calcDervs(uint8_t *d_image, float *d_du, float *d_dv, size_t *d_
 	int i=blockDim.x*blockIdx.x+threadIdx.x;
 	int j=blockDim.y*blockIdx.y+threadIdx.y;
 
-	if(i>*d_ROIwidth-2 || j>*d_ROIheight-2) return;
+	if(i>*d_ROIwidth-2 || j>*d_ROIheight-2)  return;
 
 	// Image coordinates
 	int abs_i=i+(*d_x_off);
 	int abs_j=j+(*d_y_off);
 
-	if (i<*d_ROIwidth-1 && j<*d_ROIheight-1) //dervs images have width-1 X height-1 dimension
-	{
-		d_du[(*d_ROIwidth-1)*j+i]=float(d_image[*d_width*(abs_j)+abs_i+1])-float(d_image[*d_width*(abs_j+1)+abs_i]);
-		d_dv[(*d_ROIwidth-1)*j+i]=float(d_image[*d_width*(abs_j)+abs_i])-float(d_image[*d_width*(abs_j+1)+abs_i+1]);
-	}
+
+	d_du[(*d_ROIwidth-1)*j+i]=float(d_image[*d_width*(abs_j)+abs_i+1])-float(d_image[*d_width*(abs_j+1)+abs_i]);
+	d_dv[(*d_ROIwidth-1)*j+i]=float(d_image[*d_width*(abs_j)+abs_i])-float(d_image[*d_width*(abs_j+1)+abs_i+1]);
+
 };
 
 __global__ void calcDervsF(float *d_du, float *d_duF, float *d_dv, float *d_dvF, size_t *d_ROIwidth, size_t *d_ROIheight, float *d_smw, float *d_smmw, float *d_sw, float *d_smbw, float *d_sbw)
@@ -106,6 +105,11 @@ __global__ void calcDervsF(float *d_du, float *d_duF, float *d_dv, float *d_dvF,
 			return;
 	}
 	
+	//option2: no smoothing edges
+	d_duF[(*d_ROIwidth-1)*j+i]=d_du[(*d_ROIwidth-1)*j+i];
+	d_dvF[(*d_ROIwidth-1)*j+i]=d_dv[(*d_ROIwidth-1)*j+i];
+
+	return;
 
 	//Smoothing edges
 	if (j==0)
@@ -208,21 +212,17 @@ __global__ void calcGrads(float *d_duF, float *d_dvF, size_t *d_ROIwidth, size_t
 
 	b=gridY-m*gridX;
 
-	//to avoid inf value of wm2p1
-	if(*d_x_c_old==0) *d_x_c_old=minF;
-	if(*d_y_c_old==0) *d_y_c_old=minF;
-
 	float wm2p1=gradMag/sqrt((gridX-*d_x_c_old)*(gridX-*d_x_c_old)+(gridY-*d_y_c_old)*(gridY-*d_y_c_old))/(m*m+1);
 
-	atomicAdd(sw,wm2p1);
+	//atomicAdd(sw,wm2p1);
 	//*sw+=wm2p1;
-	atomicAdd(smmw,m*m*wm2p1);
+	//atomicAdd(smmw,m*m*wm2p1);
 	//*smmw+=m*m*wm2p1;
-	atomicAdd(smw,m*wm2p1);
+	//atomicAdd(smw,m*wm2p1);
 	//*smw+=m*wm2p1;
-	atomicAdd(smbw,m*b*wm2p1);
+	//atomicAdd(smbw,m*b*wm2p1);
 	//*smbw+=m*b*wm2p1;
-	atomicAdd(sbw,b*wm2p1);
+	//atomicAdd(sbw,b*wm2p1);
 	//*sbw+=b*wm2p1;
 };
 __global__ void calcCenter(float *d_x_c, float *d_y_c, float *d_x_c_old, float *d_y_c_old, float *det, float *sw, float *smmw, float *smw, float *smbw, float *sbw)

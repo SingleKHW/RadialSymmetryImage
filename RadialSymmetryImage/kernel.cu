@@ -22,6 +22,7 @@ __global__ void addKernel(int *c, const int *a, const int *b)
 	c[i] = a[i] + b[i];
 }
 
+
 int main()
 {
 	/*memory allocation test*/
@@ -65,6 +66,7 @@ int main()
 	h_x_c=&dummy1;
 	h_y_c=&dummy2;
 
+
 	size_t width=160;
 	size_t height=160;
 	size_t ROI_width=128;
@@ -73,14 +75,30 @@ int main()
 	size_t y_off=(height-ROI_height)/2;
 
 	dim3 grid, block;
-	grid.x=ROI_width/32;
-	grid.y=ROI_height/32;
-	block.x=32;
-	block.y=32;
+	size_t warpSize=16;
+	grid.x=ROI_width/warpSize;
+	grid.y=ROI_height/warpSize;
+	block.x=warpSize;
+	block.y=warpSize;
 
 	RSImage_GPU *RSImage=(RSImage_GPU*)malloc(sizeof*RSImage);
 
 	initRSImage(RSImage,width,height,ROI_width,ROI_height,x_off,y_off,RC.m_x_centroid,RC.m_y_centroid);
+
+	cudaResourceDesc resDesc;
+	memset(&resDesc, 0, sizeof(resDesc));
+	resDesc.resType = cudaResourceTypeLinear;
+	resDesc.res.linear.devPtr = RSImage->d_du;
+	resDesc.res.linear.desc.f = cudaChannelFormatKindFloat;
+	resDesc.res.linear.desc.x = 32; // bits per channel
+	resDesc.res.linear.sizeInBytes = (ROI_width-1)*(ROI_height-1)*sizeof(float);
+
+	cudaTextureDesc texDesc;
+	memset(&texDesc, 0, sizeof(texDesc));
+	texDesc.readMode = cudaReadModeElementType;
+
+	cudaTextureObject_t tex=0;
+	cudaCreateTextureObject(&tex, &resDesc, &texDesc, NULL);
 
 	cudaMemcpy(RSImage->d_image,image,width*height*sizeof*RSImage->d_image,cudaMemcpyHostToDevice);
 	//cudaMemcpy(RSImage->d_dervs,h_x_c,160*160*sizeof*h_x_c,cudaMemcpyHostToDevice);
@@ -124,7 +142,7 @@ int main()
 		calcDervs<<<grid,block>>>(RSImage->d_image,RSImage->d_du,RSImage->d_dv,RSImage->d_x_off,RSImage->d_y_off,RSImage->d_width, RSImage->d_height, RSImage->d_ROIwidth, RSImage->d_ROIheight);
 		calcDervsF<<<grid,block>>>(RSImage->d_du,RSImage->d_duF,RSImage->d_dv,RSImage->d_dvF, RSImage->d_ROIwidth, RSImage->d_ROIheight,RSImage->d_smw, RSImage->d_smmw, RSImage->d_sw, RSImage->d_smbw, RSImage->d_sbw);
 		calcGrads<<<grid,block>>>(RSImage->d_duF, RSImage->d_dvF, RSImage->d_ROIwidth, RSImage->d_ROIheight, RSImage->d_x_c, RSImage->d_y_c, RSImage->d_x_c_old, RSImage->d_y_c_old, RSImage->d_sw, RSImage->d_smmw, RSImage->d_smw, RSImage->d_smbw, RSImage->d_sbw);
-		calcCenter<<<1,1>>>(RSImage->d_x_c, RSImage->d_y_c, RSImage->d_x_c_old, RSImage->d_y_c_old, RSImage->d_det, RSImage->d_sw, RSImage->d_smmw, RSImage->d_smw, RSImage->d_smbw, RSImage->d_sbw);
+		//calcCenter<<<1,1>>>(RSImage->d_x_c, RSImage->d_y_c, RSImage->d_x_c_old, RSImage->d_y_c_old, RSImage->d_det, RSImage->d_sw, RSImage->d_smmw, RSImage->d_smw, RSImage->d_smbw, RSImage->d_sbw);
 	}
 	cudaDeviceSynchronize();
 
